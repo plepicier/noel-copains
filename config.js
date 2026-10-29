@@ -2,8 +2,8 @@
 window.NOEL_CONFIG = {
   // Laisse vide pour le mode démo (les réponses restent dans le navigateur).
   // Une fois Supabase créé : Project Settings > API (voir GUIDE.md).
-  supabaseUrl: "",
-  supabaseKey: "",
+  supabaseUrl: "https://pkucqkupryguuyfvpwgs.supabase.co",
+  supabaseKey: "sb_publishable_rj89eoRiLkQznnn37kZ36g_x6OwDboe",
 
   titre: "Noël des Copains",
   dateFete: "2026-12-05T19:30:00+01:00",
