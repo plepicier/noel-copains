@@ -209,8 +209,8 @@ body.is-demo footer{padding-bottom:100px}
 .h-roof{animation:roof .9s var(--spring) calc(var(--d) + .55s) both}
 @keyframes roof{0%{transform:translateY(-150px);opacity:0}30%{opacity:1}}
 .win{fill:#23285A}
-.win.on{fill:url(#gWin);animation:lightup .8s linear calc(var(--d) + 1.3s) both}
-@keyframes lightup{0%,30%,50%{fill:#23285A}25%,40%,100%{fill:url(#gWin)}}
+.win.on{fill:#FFD27A;fill:url(#gWin);animation:lightup .8s linear calc(var(--d) + 1.3s) both}
+@keyframes lightup{0%,30%,50%{fill:#23285A}25%,40%,100%{fill:#FFD27A}}
 .win.maybe{fill:#F2A23A;animation:candle 1.6s steps(2) infinite}
 @keyframes candle{50%{fill:#7A4E1D}}
 .spill{opacity:0}
@@ -1296,7 +1296,7 @@ function kidSVG(x, k, name) {
   const coats = ["#E0475B", "#4F7FD1", "#4E9A78", "#D08A2E", "#8A5FD0"], h = hash(name);
   return `<g transform="translate(${x},0)" style="--k:${k}"><g class="kid-in"><g class="kid-hop">
     <rect x="-5" y="-14" width="10" height="14" rx="5" fill="${coats[h % 5]}"/><circle cy="-18.5" r="4.4" fill="#EBC6A2"/>
-    <path d="M-4.6 -19 a4.6 4.6 0 0 1 9.2 0 Z" fill="${coats[(h >> 3) % 5]}"/><circle cy="-24.4" r="1.7" fill="#F6EFE3"/></g></g></g>`;
+    <path d="M-4.6 -19 a4.6 4.6 0 0 1 9.2 0 Z" fill="${coats[(h >>> 3) % 5]}"/><circle cy="-24.4" r="1.7" fill="#F6EFE3"/></g></g></g>`;
 }
 function labelSVG(h, y) {
   const parts = h.adults.map(a => ({ t: a.name + (a.g ? "" : " ?"), pending: !a.g || (h.status === "oui" && a.g.status !== "oui") }));
@@ -1311,7 +1311,7 @@ function labelSVG(h, y) {
 function houseSVG(h, i, d) {
   const { hx, top } = slotPos(i), k = hash(h.key);
   const wall = ["#EE3B4E", "#8FD0FF", "#FFB3CF", "#5FD39B", "#FF9F5A", "#B79CFF", "#F7F3EA"][k % 7];
-  const roof = ["#2B1A3F", "#C51F37", "#0D6B45", "#3B3F9E"][(k >> 3) % 4];
+  const roof = ["#2B1A3F", "#C51F37", "#0D6B45", "#3B3F9E"][(k >>> 3) % 4];
   const a = h.adults[0], b = h.adults[1] || h.adults[0];
   const winCls = x => !x.g ? "" : x.g.status === "oui" ? "on" : x.g.status === "peut-etre" ? "maybe" : "";
   const glow = x => winCls(x) === "on" ? ` filter="url(#glow)"` : "";
