@@ -1,0 +1,5 @@
+# Seuls index.html et config.js partent en ligne (supabase.sql contient le mot de passe des orgas)
+*
+!.gitignore
+!index.html
+!config.js
