@@ -925,7 +925,21 @@ function audio() {
     AC = new A(); master = AC.createGain(); master.gain.value = .7; master.connect(AC.destination);
   }
   if (AC.state === "suspended") AC.resume();
+  iosUnlock();
   return AC;
+}
+// iPhone : sans ça, le bouton silencieux coupe le Web Audio. On passe la session en « lecture »
+// et on joue un son muet en boucle, qui fait la même chose sur les iOS plus anciens.
+let mute = null;
+function iosUnlock() {
+  try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch {}
+  if (!mute) {
+    const n = 4410, b = new DataView(new ArrayBuffer(44 + n * 2)), s = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+    s(0, "RIFF"); b.setUint32(4, 36 + n * 2, true); s(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+    b.setUint32(24, 44100, true); b.setUint32(28, 88200, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); s(36, "data"); b.setUint32(40, n * 2, true);
+    mute = new Audio(URL.createObjectURL(new Blob([b], { type: "audio/wav" }))); mute.loop = true; mute.setAttribute("playsinline", "");
+  }
+  if (mute.paused) mute.play().catch(() => {});
 }
 function bell(f, t, d = .9, v = .12) {
   const c = audio(); if (!c) return;
@@ -962,7 +976,7 @@ function startAmb() {
   sleigh();
   amb = { src, iv: setInterval(() => { if (Math.random() < .55) sleigh(); }, 5000) };
 }
-function stopAmb() { if (!amb) return; try { amb.src.stop(); } catch {} clearInterval(amb.iv); amb = null; }
+function stopAmb() { if (!amb) return; try { amb.src.stop(); } catch {} clearInterval(amb.iv); amb = null; if (!music.on && mute) mute.pause(); }
 $("#soundBtn").addEventListener("click", e => {
   const on = !amb; on ? startAmb() : stopAmb();
   const b = e.currentTarget;
@@ -1025,6 +1039,7 @@ const music = (() => {
 })();
 function setMusic(play, remember) {
   play ? music.start() : music.stop();
+  if (!music.on && !amb && mute) mute.pause();
   const b = $("#musicBtn");
   b.setAttribute("aria-pressed", music.on);
   b.setAttribute("aria-label", music.on ? "Couper la musique de Noël" : "Lancer la musique de Noël");
@@ -1035,14 +1050,19 @@ setMusic(false);
 $("#musicBtn").addEventListener("click", () => setMusic(!music.on, true));
 // Les navigateurs interdisent le son avant un geste : la musique part au premier toucher, sauf si on l'a coupée
 (() => {
+  // Sur iPhone, seuls un « tap » fini (touchend, click) ou une touche débloquent le son, pas un défilement :
+  // on réessaie à chaque geste jusqu'à ce que le son tourne vraiment.
+  const evs = ["touchend", "click", "keydown"];
+  const done = () => evs.forEach(n => removeEventListener(n, first, true));
   const first = e => {
-    removeEventListener("pointerdown", first, true); removeEventListener("keydown", first, true);
-    if (e.target.closest && e.target.closest("#musicBtn")) return;
-    if (store.get("noel-music") === "off") return;
-    setMusic(true);
-    if (music.on) toast("Petite musique lancée. Touche la note en haut pour la couper", "bell");
+    if (e.target.closest && e.target.closest("#musicBtn")) return done();
+    if (store.get("noel-music") === "off") return done();
+    if (!music.on) setMusic(true);
+    const c = AC; if (!c) return done();
+    const ok = () => { if (c.state !== "running" || !evs.length || first.ok) return; first.ok = true; done(); toast("Petite musique lancée. Touche la note en haut pour la couper", "bell"); };
+    ok(); c.resume().then(ok, () => {});
   };
-  addEventListener("pointerdown", first, true); addEventListener("keydown", first, true);
+  evs.forEach(n => addEventListener(n, first, true));
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && music.on) { music.stop(); music.paused = true; }
     else if (!document.hidden && music.paused) { music.paused = false; setMusic(true); }
