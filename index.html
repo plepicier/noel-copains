@@ -1038,6 +1038,7 @@ const music = (() => {
   return { start, stop, get on() { return on; } };
 })();
 function setMusic(play, remember) {
+  delete $("#musicBtn").dataset.armed;
   play ? music.start() : music.stop();
   if (!music.on && !amb && mute) mute.pause();
   const b = $("#musicBtn");
@@ -1047,7 +1048,13 @@ function setMusic(play, remember) {
   if (remember) store.set("noel-music", music.on ? "on" : "off");
 }
 setMusic(false);
-$("#musicBtn").addEventListener("click", () => setMusic(!music.on, true));
+// Le son ne peut partir qu'au premier toucher : en attendant, le bouton s'affiche déjà allumé (« armé »),
+// et le toucher l'éteint, comme on s'y attend.
+if (store.get("noel-music") !== "off") {
+  const b = $("#musicBtn"); b.dataset.armed = "1";
+  b.setAttribute("aria-pressed", "true"); b.setAttribute("aria-label", "Couper la musique de Noël"); b.innerHTML = ic("note");
+}
+$("#musicBtn").addEventListener("click", e => setMusic(e.currentTarget.dataset.armed ? false : !music.on, true));
 // Les navigateurs interdisent le son avant un geste : la musique part au premier toucher, sauf si on l'a coupée
 (() => {
   // Sur iPhone, seuls un « tap » fini (touchend, click) ou une touche débloquent le son, pas un défilement :
