@@ -27,7 +27,7 @@ window.NOEL_CONFIG = {
     { adultes: ["Valérien", "Charlotte"] },
     { adultes: ["Ségolène", "Valentin"], enfants: ["Louison", "Lucile"] },
     { adultes: ["Erwan", "Isaure"], enfants: ["Esmée", "Maia"] },
-    { adultes: ["Manon"], message: "Encore tout seul cette année ?" },
+    { adultes: ["Manon"], message: "Encore toute seule cette année ?" },
     { adultes: ["Florian"], message: "Encore tout seul cette année ?" },
     { adultes: ["Pierre"] },
     { adultes: ["Thomas"] }
