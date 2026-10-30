@@ -525,6 +525,8 @@ html,body{overflow-x:clip}
 /* ---------- traîneau ---------- */
 .sled{position:absolute;left:0;top:150px;z-index:1;width:150px;opacity:0;pointer-events:none}
 .sled svg{display:block;width:100%;height:auto}
+.gift-drop{position:fixed;z-index:55;width:38px;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(43,26,63,.9))}
+.gift-drop svg{display:block;width:100%}
 .sled.fly{animation:sledX 7s linear forwards}
 .sled.fly svg{animation:sledBob 1.75s ease-in-out infinite}
 @keyframes sledX{0%{opacity:1;transform:translate(-170px,30px) rotate(-6deg)}50%{transform:translate(calc(50vw - 75px),-8px) rotate(-3deg)}100%{opacity:1;transform:translate(calc(100vw + 20px),-40px) rotate(-8deg)}}
@@ -1301,11 +1303,30 @@ if (!reduce && matchMedia("(hover:hover) and (pointer:fine)").matches) {
   const plan = d => { clearTimeout(timer); timer = setTimeout(fly, d); };
   function fly() {
     if (!seen || document.hidden) return plan(5000);
-    el.classList.remove("fly"); void el.offsetWidth; el.classList.add("fly");
+    el.classList.remove("fly"); void el.offsetWidth; el.classList.add("fly"); delete el.dataset.dropped;
     if (amb) setTimeout(sleigh, 600);
     plan(30000 + Math.random() * 15000);
   }
   el.addEventListener("animationend", e => { if (e.target === el) el.classList.remove("fly"); });
+  // Easter egg : qui touche le traîneau en vol reçoit un cadeau lâché du ciel (un par passage).
+  // On teste la zone à la main : le traîneau passe derrière le titre, il ne doit rien bloquer.
+  addEventListener("pointerdown", e => {
+    if (!el.classList.contains("fly") || el.dataset.dropped) return;
+    const r = el.getBoundingClientRect(), m = 16;
+    if (e.clientX < r.left - m || e.clientX > r.right + m || e.clientY < r.top - m || e.clientY > r.bottom + m) return;
+    el.dataset.dropped = "1";
+    const g = document.createElement("span"); g.className = "gift-drop"; g.setAttribute("aria-hidden", "true");
+    g.appendChild($(".stk.s1 svg").cloneNode(true));
+    const x = r.left + r.width * .3, y = r.top + r.height * .55, fall = Math.min(innerHeight * .5, 320), dx = 30 + Math.random() * 40;
+    g.style.cssText = `left:${x}px;top:${y}px`; document.body.appendChild(g);
+    if (amb || music.on) sleigh();
+    g.animate([{ transform: "translate(-50%,-50%) scale(.4) rotate(0deg)" }, { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${fall}px)) scale(1) rotate(${Math.random() < .5 ? "-" : ""}200deg)` }],
+      { duration: 1050, easing: "cubic-bezier(.45,0,.9,.6)", fill: "forwards" }).onfinish = () => {
+      g.remove(); confetti(x + dx, y + fall, 120);
+      if (amb || music.on) jingle();
+      toast("Ho ho ho ! Le Père Noël t'a vu… et t'a lâché un cadeau", "gift");
+    };
+  });
   plan(4000);
 })();
 
