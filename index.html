@@ -453,14 +453,20 @@ html,body{overflow-x:clip}
 .s3{--s:42px;left:1%;top:142px;--r:-12deg;--t:4.6s;--dl:.4s}
 .s4{--s:34px;left:2%;top:94px;--r:6deg;--t:3.2s;--dl:.55s}
 .s5{--s:66px;right:7%;bottom:62px;--r:-4deg;--t:5s;--dl:.7s}
-.s6{--s:46px;left:7%;bottom:58px;--r:12deg;--t:4s;--dl:.85s}
+.s6{--s:44px;left:1.5%;top:196px;bottom:auto;--r:12deg;--t:4s;--dl:.85s}
+/* Pain d'épices croquable */
+.hero-in{pointer-events:none}.hero-in>*{pointer-events:auto}
+.stk.s6{pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.stk.s6::after{content:"";position:absolute;inset:-8px}
+.crumb{position:absolute;width:5px;height:5px;margin:-2.5px;border-radius:1.5px;background:#C77B3E;border:1px solid var(--ink);pointer-events:none;animation:crumb .7s var(--out) forwards}
+@keyframes crumb{to{transform:translate(var(--cx),var(--cy)) rotate(220deg);opacity:0}}
 @media (min-width:720px){
   .s1{--s:76px;left:9%;top:auto;bottom:34%}
   .s2{--s:70px;right:13%;top:20%}
   .s3{--s:64px;left:11%;top:21%}
   .s4{--s:48px;left:18%;top:110px}
   .s5{--s:92px;right:8%;bottom:90px}
-  .s6{--s:64px;left:6%;bottom:80px}
+  .s6{--s:64px;left:6%;top:auto;bottom:80px}
 }
 
 /* ---------- veille de Noël : ciel, lune ---------- */
@@ -1236,6 +1242,55 @@ if (!reduce && matchMedia("(hover:hover) and (pointer:fine)").matches) {
       v += (e.clientX < r.left + r.width / 2 ? -1 : 1) * 260;
       if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); }
     });
+  });
+})();
+// Pain d'épices : chaque toucher croque un morceau (bras, jambes, corps, tête), puis il repousse
+(() => {
+  const el = $(".stk.s6"); if (!el) return;
+  const svg = el.querySelector("svg"), NS = "http://www.w3.org/2000/svg";
+  svg.insertAdjacentHTML("afterbegin", `<defs><mask id="biteMask" maskUnits="userSpaceOnUse" x="-4" y="-4" width="72" height="72"><rect x="-4" y="-4" width="72" height="72" fill="#fff"/><g class="bites"></g></mask></defs>`);
+  const g = document.createElementNS(NS, "g"); g.setAttribute("mask", "url(#biteMask)");
+  [...svg.childNodes].filter(n => n.nodeName !== "defs").forEach(n => g.appendChild(n)); svg.appendChild(g);
+  const bites = svg.querySelector(".bites");
+  // Chaque bouchée : trois cercles qui font une marque de dents, et l'endroit d'où partent les miettes
+  const STEPS = [
+    { c: [[55, 30, 5], [57, 35.5, 5], [52.5, 40, 4.5]], at: [54, 35] },
+    { c: [[9, 30, 5], [7, 35.5, 5], [11.5, 40, 4.5]], at: [10, 35] },
+    { c: [[43, 51, 5], [45.5, 56.5, 5], [39, 59, 5]], at: [42, 55] },
+    { c: [[21, 51, 5], [18.5, 56.5, 5], [25, 59, 5]], at: [22, 55] },
+    { r: [-4, 25.6, 72, 42], at: [32, 40] },
+    { r: [-4, -4, 72, 72], at: [32, 15] }
+  ];
+  let n = 0, busy = false;
+  const crunch = () => {
+    if (!AC || AC.state !== "running" || !(amb || music.on)) return;
+    const len = .09, buf = AC.createBuffer(1, AC.sampleRate * len, AC.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 2;
+    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), gn = AC.createGain();
+    f.type = "bandpass"; f.frequency.value = 1800 + Math.random() * 900; f.Q.value = .8; gn.gain.value = .5;
+    s.buffer = buf; s.connect(f); f.connect(gn); gn.connect(master); s.start();
+  };
+  const crumbs = ([x, y]) => {
+    if (reduce) return;
+    for (let i = 0; i < 6; i++) {
+      const c = document.createElement("i"); c.className = "crumb";
+      const a = Math.random() * Math.PI * 2, dist = 18 + Math.random() * 22;
+      c.style.cssText = `left:${x / 64 * 100}%;top:${y / 64 * 100}%;--cx:${(Math.cos(a) * dist).toFixed(1)}px;--cy:${(Math.sin(a) * dist + 16).toFixed(1)}px`;
+      el.appendChild(c); setTimeout(() => c.remove(), 750);
+    }
+  };
+  el.addEventListener("pointerdown", () => {
+    if (busy) return;
+    const s = STEPS[n++];
+    if (s.c) bites.insertAdjacentHTML("beforeend", s.c.map(([x, y, rr]) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="#000"/>`).join(""));
+    else bites.insertAdjacentHTML("beforeend", `<rect x="${s.r[0]}" y="${s.r[1]}" width="${s.r[2]}" height="${s.r[3]}" fill="#000"/>`);
+    crunch(); crumbs(s.at);
+    if (!reduce) el.animate([{ scale: "1" }, { scale: ".84 1.1" }, { scale: "1" }], { duration: 320, easing: "cubic-bezier(.34,1.56,.64,1)" });
+    if (n === STEPS.length) {
+      busy = true; toast("Miam. Il ne reste que des miettes… et il repousse déjà", "sparkle");
+      setTimeout(() => { bites.innerHTML = ""; n = 0; busy = false;
+        if (!reduce) el.animate([{ scale: "0", rotate: "-30deg" }, { scale: "1", rotate: "0deg" }], { duration: 700, easing: "cubic-bezier(.34,1.56,.64,1)" }); }, 1600);
+    }
   });
 })();
 // Traîneau : passe de temps en temps, seulement quand l'accueil est à l'écran
