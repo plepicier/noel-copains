@@ -156,7 +156,7 @@ body.is-demo footer{padding-bottom:100px}
 .cell .ic{width:26px;height:26px;color:var(--ink)}
 .cell small{display:block;font-family:var(--round);font-size:13px;font-weight:600;color:var(--ink2)}
 .cell b{display:block;font-family:var(--round);font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.15}
-.cd-cell{grid-column:span 2;gap:10px;background:var(--red)!important;color:#fff}
+.cd-cell{grid-column:span 2;gap:10px;margin-bottom:14px;background:var(--red)!important;color:#fff}
 .cd-cell .ic,.cd-cell small{color:#fff}
 .cd-head{display:flex;align-items:center;gap:8px}
 .cd{display:flex;align-items:baseline;justify-content:space-between;gap:4px}
@@ -525,11 +525,12 @@ html,body{overflow-x:clip}
 @keyframes bbSway{0%,100%{rotate:-3deg}50%{rotate:3deg}}
 
 /* ---------- traîneau ---------- */
-.sled{position:absolute;left:0;top:150px;z-index:1;width:150px;opacity:0;pointer-events:none}
+.sled{position:absolute;left:0;top:150px;z-index:5;width:150px;opacity:0;pointer-events:none}
 .sled svg{display:block;width:100%;height:auto}
 .gift-drop{position:fixed;z-index:55;width:38px;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(43,26,63,.9))}
 .gift-drop svg{display:block;width:100%}
-.sled.fly{animation:sledX 7s linear forwards}
+.sled.fly{animation:sledX 9s linear forwards}
+@media (min-width:720px){.sled.fly{animation-duration:7s}}
 .sled.fly svg{animation:sledBob 1.75s ease-in-out infinite}
 @keyframes sledX{0%{opacity:1;transform:translate(-170px,30px) rotate(-6deg)}50%{transform:translate(calc(50vw - 75px),-8px) rotate(-3deg)}100%{opacity:1;transform:translate(calc(100vw + 20px),-40px) rotate(-8deg)}}
 @keyframes sledBob{50%{translate:0 -6px}}
@@ -1314,7 +1315,7 @@ if (!reduce && matchMedia("(hover:hover) and (pointer:fine)").matches) {
   // On teste la zone à la main : le traîneau passe derrière le titre, il ne doit rien bloquer.
   addEventListener("pointerdown", e => {
     if (!el.classList.contains("fly") || el.dataset.dropped) return;
-    const r = el.getBoundingClientRect(), m = 16;
+    const r = el.getBoundingClientRect(), m = 28;
     if (e.clientX < r.left - m || e.clientX > r.right + m || e.clientY < r.top - m || e.clientY > r.bottom + m) return;
     el.dataset.dropped = "1";
     const g = document.createElement("span"); g.className = "gift-drop"; g.setAttribute("aria-hidden", "true");
