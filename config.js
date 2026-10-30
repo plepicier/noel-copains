@@ -9,7 +9,7 @@ window.NOEL_CONFIG = {
   dateFete: "2026-12-05T19:30:00+01:00",
   finFete: "2026-12-06T03:00:00+01:00",
   lieu: "Trans-sur-Erdre",
-  dateLimite: "2026-11-22T23:59:00+01:00",
+  dateLimite: "2026-11-15T23:59:00+01:00",
   budget: 10,
   organisateurs: "Manon, Félix & Pierre",
 
