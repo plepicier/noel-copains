@@ -230,6 +230,8 @@ body.is-demo footer{padding-bottom:100px}
 @keyframes kidIn{from{transform:scale(0)}}
 .kid-hop{transform-origin:50% 100%;animation:hop 1.2s ease-in-out calc(var(--k) * .3s) infinite}
 @keyframes hop{0%,55%,100%{transform:none}25%{transform:translateY(-5px)}}
+.wave{transform-origin:50% 100%;animation:wave 2.6s ease-in-out calc(var(--k) * .45s + 2.4s) infinite}
+@keyframes wave{0%,55%,100%{transform:none}62%,78%{transform:rotate(-28deg)}70%,86%{transform:rotate(14deg)}}
 .h-label{animation:fadeUp .6s var(--out) calc(var(--d) + 1.5s) both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}}
 .h-label rect{fill:#fff;stroke:var(--ink);stroke-width:2}
@@ -1401,11 +1403,23 @@ function slotPos(i) {
   const left = i % 2 === 0, top = TOP + i * SLOT;
   return { left, top, hx: left ? 96 : 264, px: left ? 172 : 188, py: top + 112 };
 }
-function kidSVG(x, k, name) {
-  const coats = ["#E0475B", "#4F7FD1", "#4E9A78", "#D08A2E", "#8A5FD0"], h = hash(name);
-  return `<g transform="translate(${x},0)" style="--k:${k}"><g class="kid-in"><g class="kid-hop">
-    <rect x="-5" y="-14" width="10" height="14" rx="5" fill="${coats[h % 5]}"/><circle cy="-18.5" r="4.4" fill="#EBC6A2"/>
-    <path d="M-4.6 -19 a4.6 4.6 0 0 1 9.2 0 Z" fill="${coats[(h >>> 3) % 5]}"/><circle cy="-24.4" r="1.7" fill="#F6EFE3"/></g></g></g>`;
+// Habitant de face qui fait coucou (adulte, ou enfant plus petit). Pieds en (x, 0).
+function personSVG(x, k, name, kid) {
+  const coats = ["#E0475B", "#4F7FD1", "#4E9A78", "#D08A2E", "#8A5FD0", "#E07AA0"], skins = ["#F2CBA5", "#E3B087", "#C68B5E", "#8D5A3B"];
+  const hs = hash(name), coat = coats[hs % 6], hat = coats[(hs >>> 3) % 6], skin = skins[(hs >>> 6) % 4], scarf = ["#FFC531", "#FFFFFF", "#8FD0FF"][(hs >>> 9) % 3];
+  const L = `stroke="#2B1A3F" stroke-width="1.5" stroke-linejoin="round"`;
+  return `<g transform="translate(${x},0)" style="--k:${k}"><g class="kid-in"><g transform="scale(${kid ? .72 : 1})"><g class="${kid ? "kid-hop" : ""}">
+    <rect x="-4.6" y="-8.5" width="3.6" height="8.5" rx="1.4" fill="#2B1A3F"/><rect x="1" y="-8.5" width="3.6" height="8.5" rx="1.4" fill="#2B1A3F"/>
+    <rect x="-10" y="-19.5" width="3.6" height="10.5" rx="1.8" fill="${coat}" ${L}/>
+    <g class="wave"><rect x="6.4" y="-31" width="3.6" height="12" rx="1.8" fill="${coat}" ${L}/><circle cx="8.2" cy="-32" r="2.3" fill="${skin}" ${L}/></g>
+    <rect x="-7.2" y="-21.5" width="14.4" height="15" rx="5" fill="${coat}" ${L}/>
+    <rect x="-6.6" y="-21.8" width="13.2" height="3.4" rx="1.7" fill="${scarf}" ${L}/>
+    <circle cy="-27.6" r="6.3" fill="${skin}" ${L}/>
+    <circle cx="-2.2" cy="-28" r=".95" fill="#2B1A3F"/><circle cx="2.2" cy="-28" r=".95" fill="#2B1A3F"/>
+    <circle cx="-3.9" cy="-25.9" r="1.1" fill="#FF8FA8" opacity=".6"/><circle cx="3.9" cy="-25.9" r="1.1" fill="#FF8FA8" opacity=".6"/>
+    <path d="M-1.9 -25.6q1.9 1.6 3.8 0" fill="none" stroke="#2B1A3F" stroke-width="1" stroke-linecap="round"/>
+    <path d="M-6.3 -29.6a6.3 6.3 0 0 1 12.6 0z" fill="${hat}" ${L}/><rect x="-7" y="-30.6" width="14" height="2.8" rx="1.4" fill="#fff" ${L}/>
+    <circle cy="-36.6" r="2" fill="#fff" ${L}/></g></g></g></g>`;
 }
 function labelSVG(h, y) {
   const parts = h.adults.map(a => ({ t: a.name + (a.g ? "" : " ?"), pending: !a.g || (h.status === "oui" && a.g.status !== "oui") }));
@@ -1428,7 +1442,13 @@ function houseSVG(h, i, d) {
     const t = j / 10, x = 14 + t * 92, y = t <= .5 ? 60 - t * 2 * 48 : 12 + (t - .5) * 2 * 48;
     return `<circle cx="${x.toFixed(1)}" cy="${(y + 2).toFixed(1)}" r="1.7" fill="${["#FFB547", "#E0475B", "#7FB59A", "#A9C7FF"][j % 4]}"/>`;
   }).join("");
-  const kids = h.kids.slice(0, 5), kx0 = 60 - (kids.length - 1) * 9;
+  const kids = h.kids.slice(0, 5);
+  // Les adultes qui ont dit oui encadrent leurs enfants, tout le monde de face
+  const ads = h.adults.filter(x => x.g && x.g.status === "oui").map(x => ({ n: x.name, kid: false }));
+  const folk = ads.length > 1 ? [ads[0], ...kids.map(n => ({ n, kid: true })), ...ads.slice(1)] : [...ads, ...kids.map(n => ({ n, kid: true }))];
+  const gaps = folk.map(f => f.kid ? 14 : 19), span = gaps.reduce((s, g) => s + g, 0) - (gaps[0] + gaps[gaps.length - 1]) / 2;
+  let px = 60 - span / 2 - gaps[0] / 2;
+  const people = folk.map((f, j) => { px += j ? (gaps[j - 1] + gaps[j]) / 2 : gaps[0] / 2; return personSVG(px, j, f.n, f.kid); }).join("");
   const mine = meData && h.members.some(m => m.id === meData.id);
   return `<g transform="translate(${hx - 60},${top})" id="h-${esc(h.key)}"><g class="hs" style="--d:${d}s">
     <ellipse class="h-mound" cx="60" cy="118" rx="74" ry="9" fill="url(#gSnow)"/>
@@ -1451,8 +1471,8 @@ function houseSVG(h, i, d) {
       <rect x="78" y="18" width="13" height="5" rx="2.5" fill="#F6EFE3"/>
     </g>
     <g class="h-lights">${bulbs}</g>
-    <g transform="translate(${kx0},136)">${kids.map((n, j) => kidSVG(j * 18, j, n)).join("")}</g>
-    ${labelSVG(h, kids.length ? 142 : 128)}
+    <g transform="translate(0,137)">${people}</g>
+    ${labelSVG(h, folk.length ? 142 : 128)}
     ${mine ? `<g transform="translate(60,-8)"><path class="mestar" d="${SPARK}" fill="#FFD27A" filter="url(#glow)"/></g>` : ""}
   </g></g>`;
 }
