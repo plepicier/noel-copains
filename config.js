@@ -10,7 +10,7 @@ window.NOEL_CONFIG = {
   finFete: "2026-12-06T03:00:00+01:00",
   lieu: "Trans-sur-Erdre",
   dateLimite: "2026-11-22T23:59:00+01:00",
-  budget: 5,
+  budget: 10,
   organisateurs: "Manon, Félix & Pierre",
 
   // Les foyers connus : quand quelqu'un tape son prénom, le site le reconnaît
@@ -27,8 +27,8 @@ window.NOEL_CONFIG = {
     { adultes: ["Valérien", "Charlotte"] },
     { adultes: ["Ségolène", "Valentin"], enfants: ["Louison", "Lucile"] },
     { adultes: ["Erwan", "Isaure"], enfants: ["Esmée", "Maia"] },
-    { adultes: ["Manon"], message: "Encore toute seule cette année ?" },
-    { adultes: ["Florian"], message: "Encore toute seule cette année ?" },
+    { adultes: ["Manon"], message: "Encore tout seul cette année ?" },
+    { adultes: ["Florian"], message: "Encore tout seul cette année ?" },
     { adultes: ["Pierre"] },
     { adultes: ["Thomas"] }
   ]
