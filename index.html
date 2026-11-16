@@ -1911,6 +1911,14 @@ async function useCode(input) {
   } catch (e) { if (err) err.textContent = errText(e); else toast(errText(e), "question"); }
 }
 
+// Confirmation en deux touchers, à la place de confirm() : les navigateurs intégrés
+// (Messenger, Slack, Instagram…) bloquent souvent les boîtes de dialogue sans rien dire.
+function sure(t, label) {
+  if (t.dataset.sure) { clearTimeout(t._sure); t.innerHTML = t._label; delete t.dataset.sure; return true; }
+  t._label = t.innerHTML; t.dataset.sure = "1"; t.textContent = label;
+  t._sure = setTimeout(() => { if (t.dataset.sure) { t.innerHTML = t._label; delete t.dataset.sure; } }, 4000);
+  return false;
+}
 document.addEventListener("click", async e => {
   const t = e.target.closest("[data-act]"); if (!t) return;
   const act = t.dataset.act;
@@ -1920,20 +1928,21 @@ document.addEventListener("click", async e => {
   else if (act === "code") useCode(document.getElementById(t.dataset.input));
   else if (act === "copy") { try { await navigator.clipboard.writeText(meData.code); toast("Code copié", "copy"); } catch { toast("Note-le : " + meData.code, "copy"); } }
   else if (act === "toggleEdit") { const z = $("#editZone"); z.hidden = !z.hidden; }
-  else if (act === "logout") { if (confirm("Oublier ton code sur ce téléphone ?")) { store.del("noel-code"); code = null; meData = null; renderAll(); } }
+  else if (act === "logout") { if (sure(t, "Sûr ? Touche encore pour oublier ton code")) { store.del("noel-code"); code = null; meData = null; renderAll(); } }
   else if (act === "ics") ics();
   else if (act === "vote") {
     try { await api.vote(meData.code, t.dataset.id); meData = await api.me(meData.code); renderPull(); toast("A voté !", "ballot"); const c = audio(); if (c) bell(1046, c.currentTime, .6, .12); }
     catch (er) { toast(errText(er), "question"); }
   }
   else if (act === "draw") {
-    if (!confirm("Lancer le tirage parmi les adultes qui ont répondu oui ? Ça remplace tout tirage précédent.")) return;
+    if (!sure(t, "Sûr ? Touche encore pour lancer (ça remplace tout tirage précédent)")) return;
+    t.disabled = true;
     try { const r = await api.runDraw(adminPass); toast(`Tirage fait pour ${r.n} lutins`, "dice"); confetti(); jingle(); refresh(); }
-    catch (er) { toast(errText(er), "question"); }
+    catch (er) { toast(errText(er), "question"); t.disabled = false; }
   }
   else if (act === "vstate") { try { await api.setVote(adminPass, t.dataset.s); refresh(); } catch (er) { toast(errText(er), "question"); } }
   else if (act === "del") {
-    if (!confirm(`Supprimer ${t.dataset.name} du village ?`)) return;
+    if (!sure(t, "Sûr ?")) return;
     try { await api.adminDelete(adminPass, t.dataset.code); refresh(); } catch (er) { toast(errText(er), "question"); }
   }
 });
