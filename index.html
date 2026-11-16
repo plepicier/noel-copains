@@ -390,7 +390,7 @@ body.is-demo footer{padding-bottom:100px}
 .wish-for[hidden]{display:none}
 .wish-for small{display:block;font-family:var(--round);font-weight:600;font-size:14px;opacity:.75;margin-bottom:4px}
 .wish-for p{margin:0;white-space:pre-line;overflow-wrap:anywhere;color:var(--ink)}
-.wish-for p.empty{color:var(--faint)}
+.wish-for p.empty{font-style:italic}
 #wishForm{max-width:380px;margin:22px auto 0;text-align:left}
 #wishForm textarea{width:100%;min-height:96px;font:inherit;font-size:17px;padding:13px 16px;border-radius:16px;border:var(--b);background:var(--snow);color:var(--ink);resize:vertical;-webkit-appearance:none;appearance:none}
 #wishForm .btn{margin-top:12px}
@@ -1825,10 +1825,21 @@ function wishFormHTML() {
     <small>Seule la personne qui t'a tiré la verra, en grattant sa carte.</small></label>
     <button class="btn small">${ic("gift")}Enregistrer</button><p class="err" role="alert"></p></form>`;
 }
+// Petites vannes quand la liste est vide (accordées au féminin grâce à config.filles)
+const EMPTY_WISHES = [
+  (n, e) => `${n} n'a rien écrit. ${e ? "Grosse" : "Gros"} flemmard${e}. Une paire de chaussettes, ça lui apprendra.`,
+  n => `Liste vide. ${n} compte sur ton talent de devin… ou sur ta mauvaise foi.`,
+  n => `${n} a eu la flemme d'écrire trois mots. Tu as le droit de te venger avec un cadeau nul.`,
+  n => `Rien. Nada. ${n} croit sûrement que le Père Noël lit dans les pensées.`,
+  (n, e) => `${n} n'a pas fait sa liste. Le Père Noël note : « pas sage cette année ».`,
+  (n, e) => `Aucune idée de la part ${/^[aeiouyhàâéèêëîïôûü]/i.test(n) ? "d'" : "de "}${n}. Quel${e === "e" ? "le" : ""} flemmard${e} ! Carte blanche… et tous les coups sont permis.`
+];
 function fillReceiverWishes() {
   const p = $("#rcvWishes p"); if (!p || !meData) return;
-  const w = meData.receiver_wishes;
-  p.textContent = w || "Pas encore d'idées… à toi d'improviser !";
+  const w = meData.receiver_wishes, n = meData.receiver || "";
+  if (!p.dataset.pick) p.dataset.pick = Math.floor(Math.random() * EMPTY_WISHES.length);
+  const e = (C.filles || []).some(f => f.toLowerCase() === n.trim().toLowerCase()) ? "e" : "";
+  p.textContent = w || EMPTY_WISHES[p.dataset.pick](n, e);
   p.classList.toggle("empty", !w);
 }
 // Prévient les orgas que la carte est grattée (le nom tiré ne quitte jamais la base)

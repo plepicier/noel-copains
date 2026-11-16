@@ -31,5 +31,8 @@ window.NOEL_CONFIG = {
     { adultes: ["Florian"], message: "Encore tout seul cette année ?" },
     { adultes: ["Pierre"] },
     { adultes: ["Thomas"] }
-  ]
+  ],
+
+  // Prénoms à accorder au féminin dans les petites vannes (« flemmarde »…).
+  filles: ["Manon", "Gladys", "Clémentine", "Joannice", "Lucie", "Jessica", "Audrey", "Charlotte", "Ségolène", "Isaure"]
 };
