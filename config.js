@@ -19,7 +19,7 @@ window.NOEL_CONFIG = {
   // « message » s'affiche en plus sous « Et oui, j'avais deviné ! ».
   foyers: [
     { adultes: ["Manon", "Félix"] },
-    { adultes: ["Simon", "Gladys"], enfants: ["Bébé"], message: "Et le bébé qui arrive en novembre ? On lui garde une place au chaud" },
+    { adultes: ["Simon", "Gladys"], enfants: ["Adèle"], message: "Et bienvenue à la petite Adèle ! On lui garde une place au chaud" },
     { adultes: ["Antoine", "Clémentine"], enfants: ["Alice", "Jules"] },
     { adultes: ["Joannice", "Lucie"], enfants: ["Vinciane"] },
     { adultes: ["Bastien", "Jessica"], enfants: ["Thémis"] },
