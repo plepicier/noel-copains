@@ -818,7 +818,8 @@ const server = {
   adminList: p => rpc("admin_list", { p_pass: p }),
   runDraw: p => rpc("run_draw", { p_pass: p }),
   setVote: (p, s) => rpc("set_vote_state", { p_pass: p, p_state: s }),
-  adminDelete: (p, code) => rpc("admin_delete", { p_pass: p, p_code: code })
+  adminDelete: (p, code) => rpc("admin_delete", { p_pass: p, p_code: code }),
+  revealed: code => rpc("mark_revealed", { p_code: code })
 };
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
@@ -906,7 +907,7 @@ const demo = {
     const oui = D.guests.filter(g => g.status === "oui");
     const done = Object.keys(D.assign).length > 0;
     const stale = done && (Object.entries(D.assign).some(([a, b]) => [a, b].some(id => (byId(id) || {}).status !== "oui")) || oui.some(g => !D.assign[g.id]));
-    return { guests: D.guests.map(g => ({ name: g.name, status: g.status, diet: g.diet, kids: g.kids, partner: (byId(g.partner_id) || {}).name || null, code: g.code })),
+    return { guests: D.guests.map(g => ({ name: g.name, status: g.status, diet: g.diet, kids: g.kids, partner: (byId(g.partner_id) || {}).name || null, code: g.code, revealed_at: D.assign[g.id] ? g.revealed_at || null : null })),
       draw_done: done, draw_stale: stale, vote_state: D.vote_state, votes: Object.keys(D.votes).length };
   },
   async runDraw(p) {
@@ -916,7 +917,7 @@ const demo = {
     for (let t = 0; t < 500; t++) {
       const s = shuffle([...ids]);
       if (s.every((id, i) => byId(id).partner_id !== s[(i + 1) % n])) {
-        D.assign = {}; s.forEach((id, i) => D.assign[id] = s[(i + 1) % n]); dsave(); return { n };
+        D.assign = {}; s.forEach((id, i) => D.assign[id] = s[(i + 1) % n]); D.guests.forEach(g => g.revealed_at = null); dsave(); return { n };
       }
     }
     fail("impossible");
@@ -930,6 +931,11 @@ const demo = {
     Object.keys(D.assign).forEach(k => { if (k === g.id || D.assign[k] === g.id) delete D.assign[k]; });
     Object.keys(D.votes).forEach(k => { if (k === g.id || D.votes[k] === g.id) delete D.votes[k]; });
     dsave(); return { ok: true };
+  },
+  async revealed(code) {
+    dload(); const g = byCode(code); if (!g) fail("code_inconnu");
+    if (D.assign[g.id] && !g.revealed_at) { g.revealed_at = new Date().toISOString(); dsave(); }
+    return { ok: true };
   }
 };
 const api = DEMO ? demo : server;
@@ -1792,6 +1798,13 @@ function renderSanta() {
       ${seen ? "" : "<canvas></canvas>"}
     </div></div>`;
   if (!seen) setupScratch($("#scratch"), meData.code);
+  else markRevealed(meData.code);
+}
+// Prévient les orgas que la carte est grattée (le nom tiré ne quitte jamais la base)
+const revealSent = {};
+function markRevealed(c) {
+  if (revealSent[c]) return; revealSent[c] = 1;
+  api.revealed(c).catch(() => { delete revealSent[c]; });
 }
 function setupScratch(el, theCode) {
   const cv = el.querySelector("canvas"), cx = cv.getContext("2d");
@@ -1823,7 +1836,7 @@ function setupScratch(el, theCode) {
     const d = cx.getImageData(0, 0, cv.width, cv.height).data; let clear = 0, tot = 0;
     for (let i = 3; i < d.length; i += 4 * 37) { tot++; if (d[i] === 0) clear++; }
     if (!done && clear / tot > .5) {
-      done = true; cv.classList.add("gone"); el.classList.add("done"); store.set("noel-revealed-" + theCode, "1");
+      done = true; cv.classList.add("gone"); el.classList.add("done"); store.set("noel-revealed-" + theCode, "1"); markRevealed(theCode);
       const r = el.getBoundingClientRect(); confetti(r.left + r.width / 2, r.top + r.height / 2, 180); jingle();
     }
   }
@@ -1883,8 +1896,10 @@ async function renderAdmin() {
   const kids = lit.reduce((n, h) => n + h.kids.length, 0);
   const garde = lit.reduce((n, h) => n + (h.f ? h.f.enfants.filter(k => !h.kids.includes(k)).length : 0), 0);
   const vs = a.vote_state;
+  const scr = a.guests.filter(g => g.revealed_at).length;
+  const hm = d => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   box.innerHTML = `
-    <p style="margin-top:0"><b>${a.guests.length}</b> réponses · <b>${oui}</b> adultes oui · <b>${kids}</b> enfants${garde ? ` (+ ${garde} en garde)` : ""} · tirage : <b>${a.draw_done ? "fait" : "pas encore"}</b> · votes pull : <b>${a.votes}</b></p>
+    <p style="margin-top:0"><b>${a.guests.length}</b> réponses · <b>${oui}</b> adultes oui · <b>${kids}</b> enfants${garde ? ` (+ ${garde} en garde)` : ""} · tirage : <b>${a.draw_done ? "fait" : "pas encore"}</b>${a.draw_done ? ` · grattés : <b>${scr} / ${oui}</b>` : ""} · votes pull : <b>${a.votes}</b></p>
     ${a.draw_stale ? `<div class="warn">Des réponses ont changé depuis le tirage : relancez-le pour inclure tout le monde (ça écrase l'ancien tirage).</div>` : ""}
     <div class="tools"><button data-act="draw">${ic("dice")}${a.draw_done ? "Relancer" : "Lancer"} le tirage (${oui} adultes)</button></div>
     <div class="tools">
@@ -1892,8 +1907,8 @@ async function renderAdmin() {
       <button data-act="vstate" data-s="ouvert" class="${vs === "ouvert" ? "on" : ""}">${ic("ballot")}Vote ouvert</button>
       <button data-act="vstate" data-s="resultats" class="${vs === "resultats" ? "on" : ""}">${ic("trophy")}Résultats</button>
     </div>
-    <div class="tbl"><table><thead><tr><th>Nom</th><th>Réponse</th><th>Couple</th><th>Enfants</th><th>Régime</th><th>Code</th><th></th></tr></thead><tbody>
-    ${a.guests.map(g => `<tr><td>${esc(g.name)}</td><td>${esc(STATUS[g.status][0])}</td><td>${esc(g.partner || "")}</td><td>${esc((g.kids || []).join(", "))}</td><td>${esc(g.diet || "")}</td><td><code>${esc(g.code)}</code></td>
+    <div class="tbl"><table><thead><tr><th>Nom</th><th>Réponse</th><th>Couple</th><th>Enfants</th><th>Régime</th><th>Gratté</th><th>Code</th><th></th></tr></thead><tbody>
+    ${a.guests.map(g => `<tr><td>${esc(g.name)}</td><td>${esc(STATUS[g.status][0])}</td><td>${esc(g.partner || "")}</td><td>${esc((g.kids || []).join(", "))}</td><td>${esc(g.diet || "")}</td><td>${g.revealed_at ? `<span title="${esc(hm(g.revealed_at))}">✓ ${esc(hm(g.revealed_at))}</span>` : ""}</td><td><code>${esc(g.code)}</code></td>
       <td><button class="del" data-act="del" data-code="${esc(g.code)}" data-name="${esc(g.name)}">Suppr.</button></td></tr>`).join("")}
     </tbody></table></div>
     <p style="color:var(--faint);font-size:13px">Les codes servent à dépanner quelqu'un qui a perdu le sien. Ne les utilisez pas pour espionner le tirage.</p>`;
