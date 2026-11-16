@@ -394,6 +394,8 @@ body.is-demo footer{padding-bottom:100px}
 #wishForm{max-width:380px;margin:22px auto 0;text-align:left}
 #wishForm textarea{width:100%;min-height:96px;font:inherit;font-size:17px;padding:13px 16px;border-radius:16px;border:var(--b);background:var(--snow);color:var(--ink);resize:vertical;-webkit-appearance:none;appearance:none}
 #wishForm .btn{margin-top:12px}
+.wish-nudge{margin:10px 0 0;padding:10px 14px;border-radius:14px;background:var(--gold2);font-size:15px;line-height:1.4;font-style:italic}
+.wish-nudge[hidden]{display:none}
 .scratch canvas.gone{opacity:0;transform:scale(1.15);pointer-events:none}
 
 /* ---------- pull ---------- */
@@ -1821,10 +1823,23 @@ function renderSanta() {
 function wishFormHTML() {
   if (!meData || meData.status !== "oui") return "";
   return `<form id="wishForm"><label class="field"><span>Ta liste au Père Noël</span>
+    <p class="wish-nudge"${meData.wishes ? " hidden" : ""}>${esc(nudgeText())}</p>
     <textarea name="w" maxlength="300" placeholder="Quelques idées pour ${C.budget} € max : un livre, du chocolat, un truc rigolo…">${esc(meData.wishes || "")}</textarea>
     <small>Seule la personne qui t'a tiré la verra, en grattant sa carte.</small></label>
     <button class="btn small">${ic("gift")}Enregistrer</button><p class="err" role="alert"></p></form>`;
 }
+// Petites vannes pour pousser à remplir sa propre liste
+const NUDGES = [
+  e => `Ta liste est vide. ${e ? "Grosse flemmarde" : "Gros flemmard"}, trois idées et c'est réglé.`,
+  e => `Ton Père Noël secret attend tes idées. Sans liste, ce sera des chaussettes. Tu es prévenu${e}.`,
+  () => `Rien écrit ? Ne viens pas te plaindre le 5 décembre.`,
+  () => `Même le Père Noël a besoin d'un indice. Allez, un petit effort.`,
+  () => `Liste vide = cadeau surprise. Et pas forcément une bonne surprise.`,
+  () => `Trois mots suffisent. Même toi, tu peux y arriver.`
+];
+const nudgePick = Math.floor(Math.random() * NUDGES.length);
+const isFille = n => (C.filles || []).some(f => f.toLowerCase() === String(n || "").trim().toLowerCase());
+function nudgeText() { return NUDGES[nudgePick](isFille(meData && meData.name) ? "e" : ""); }
 // Petites vannes quand la liste est vide (accordées au féminin grâce à config.filles)
 const EMPTY_WISHES = [
   (n, e) => `${n} n'a rien écrit. ${e ? "Grosse" : "Gros"} flemmard${e}. Une paire de chaussettes, ça lui apprendra.`,
@@ -1838,7 +1853,7 @@ function fillReceiverWishes() {
   const p = $("#rcvWishes p"); if (!p || !meData) return;
   const w = meData.receiver_wishes, n = meData.receiver || "";
   if (!p.dataset.pick) p.dataset.pick = Math.floor(Math.random() * EMPTY_WISHES.length);
-  const e = (C.filles || []).some(f => f.toLowerCase() === n.trim().toLowerCase()) ? "e" : "";
+  const e = isFille(n) ? "e" : "";
   p.textContent = w || EMPTY_WISHES[p.dataset.pick](n, e);
   p.classList.toggle("empty", !w);
 }
@@ -2019,7 +2034,7 @@ document.addEventListener("submit", async e => {
     e.preventDefault();
     const err = f.querySelector(".err"), btn = f.querySelector(".btn");
     btn.disabled = true; err.textContent = "";
-    try { meData = await api.wishes(meData.code, f.w.value); f.w.value = meData.wishes || ""; toast("Ta liste est envoyée au pôle Nord", "gift"); }
+    try { meData = await api.wishes(meData.code, f.w.value); f.w.value = meData.wishes || ""; f.querySelector(".wish-nudge").hidden = !!meData.wishes; toast("Ta liste est envoyée au pôle Nord", "gift"); }
     catch (er) { err.textContent = errText(er); }
     btn.disabled = false;
     return;
