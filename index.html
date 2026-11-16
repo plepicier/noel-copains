@@ -391,6 +391,10 @@ body.is-demo footer{padding-bottom:100px}
 .wish-for small{display:block;font-family:var(--round);font-weight:600;font-size:14px;opacity:.75;margin-bottom:4px}
 .wish-for p{margin:0;white-space:pre-line;overflow-wrap:anywhere;color:var(--ink)}
 .wish-for p.empty{color:var(--faint)}
+.wish-for .ghost{display:flex;width:100%;margin-top:12px;min-height:44px}
+.ideas{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.ideas[hidden]{display:none}
+.ideas li{padding:10px 12px;border-radius:14px;background:var(--gold2);font-size:15px;line-height:1.35}
 #wishForm{max-width:380px;margin:22px auto 0;text-align:left}
 #wishForm textarea{width:100%;min-height:96px;font:inherit;font-size:17px;padding:13px 16px;border-radius:16px;border:var(--b);background:var(--snow);color:var(--ink);resize:vertical;-webkit-appearance:none;appearance:none}
 #wishForm .btn{margin-top:12px}
@@ -1811,7 +1815,8 @@ function renderSanta() {
       <div class="reveal"><small>Cette année, tu gâtes</small><b>${esc(meData.receiver)}</b><small>${C.budget} € max · motus et bouche cousue</small></div>
       ${seen ? "" : "<canvas></canvas>"}
     </div>
-    <div class="wish-for" id="rcvWishes"${seen ? "" : " hidden"}><small>Sa liste au Père Noël</small><p></p></div>
+    <div class="wish-for" id="rcvWishes"${seen ? "" : " hidden"}><small>Sa liste au Père Noël</small><p></p>
+      <button type="button" class="ghost" data-act="ideas">${ic("sparkle")}En panne d'idées ?</button><ul class="ideas" hidden></ul></div>
     ${wishFormHTML()}</div>`;
   fillReceiverWishes();
   if (!seen) setupScratch($("#scratch"), meData.code);
@@ -1824,6 +1829,25 @@ function wishFormHTML() {
     <textarea name="w" maxlength="300" placeholder="Quelques idées pour ${C.budget} € max : un livre, du chocolat, un truc rigolo…">${esc(meData.wishes || "")}</textarea>
     <small>Seule la personne qui t'a tiré la verra, en grattant sa carte.</small></label>
     <button class="btn small">${ic("gift")}Enregistrer</button><p class="err" role="alert"></p></form>`;
+}
+// Idées à moins de 10 €, piochées trois par trois
+const IDEAS = [
+  "Un pot de confiture maison avec une jolie étiquette", "Des chaussettes de Noël bien kitsch", "Un mug et un sachet de chocolat chaud",
+  "Un carnet et un beau stylo", "Une bougie parfumée", "Un sachet de graines à faire pousser et un petit pot",
+  "Un jeu de cartes ou un petit jeu d'apéro", "Une tablette de chocolat de qualité et un mot gentil", "Des biscuits de Noël faits maison dans une boîte en fer",
+  "Une plante grasse dans un pot peint à la main", "Un bonnet ou des gants tout doux", "Un livre d'occasion choisi exprès pour la personne",
+  "Un kit pour faire son propre sirop ou son vin chaud", "Des épices pour un plat du monde, avec la recette", "Un porte-clés rigolo",
+  "Un cadre avec une photo de vous deux", "Une boule à neige improbable", "Un sachet de thé ou de café d'un coin sympa",
+  "Un baume à lèvres et une crème pour les mains", "Un puzzle de poche ou un casse-tête en bois", "Des marque-pages faits main",
+  "Une paire de lunettes de soleil complètement ridicule", "Un kit de bricolage pour faire une couronne de Noël", "Un tote bag à décorer avec des feutres textile",
+  "Un bocal de bonbons à l'ancienne", "Un savon artisanal", "Un mini-calendrier de l'année avec vos photos",
+  "Un carnet de bons pour un café, une balade ou un coup de main", "Un objet chiné en brocante qui lui ressemble", "Des guirlandes lumineuses à piles"
+];
+let ideasLast = [];
+function pickIdeas() {
+  const pool = IDEAS.filter(i => !ideasLast.includes(i));
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return ideasLast = pool.slice(0, 3);
 }
 function fillReceiverWishes() {
   const p = $("#rcvWishes p"); if (!p || !meData) return;
@@ -1972,6 +1996,10 @@ document.addEventListener("click", async e => {
   if (act === "showCode") { $("#codeZone").hidden = false; $("#codeRsvp").focus(); }
   else if (act === "pick") { const f = $("#rsvpForm"); reco = f._matches[+t.dataset.i]; f.querySelector(".reco")._html = null; updateReco(f); }
   else if (act === "code") useCode(document.getElementById(t.dataset.input));
+  else if (act === "ideas") {
+    const ul = t.nextElementSibling; ul.innerHTML = pickIdeas().map(i => `<li>${esc(i)}</li>`).join(""); ul.hidden = false;
+    t.innerHTML = `${ic("sparkle")}Trois autres idées`;
+  }
   else if (act === "copy") { try { await navigator.clipboard.writeText(meData.code); toast("Code copié", "copy"); } catch { toast("Note-le : " + meData.code, "copy"); } }
   else if (act === "toggleEdit") { const z = $("#editZone"); z.hidden = !z.hidden; }
   else if (act === "logout") { if (sure(t, "Sûr ? Touche encore pour oublier ton code")) { store.del("noel-code"); code = null; meData = null; renderAll(); } }
