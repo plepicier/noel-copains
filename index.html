@@ -386,6 +386,14 @@ body.is-demo footer{padding-bottom:100px}
 .scratch .reveal b{font-family:var(--round);font-weight:700;font-size:clamp(44px,13vw,62px);color:var(--red);line-height:1}
 .scratch.done .reveal b{animation:bump .9s var(--spring)}
 .scratch canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;transition:opacity .6s,transform .6s var(--out)}
+.wish-for{max-width:380px;margin:14px auto 0;padding:14px 16px;border-radius:20px;border:var(--b);background:var(--snow);text-align:left}
+.wish-for[hidden]{display:none}
+.wish-for small{display:block;font-family:var(--round);font-weight:600;font-size:14px;opacity:.75;margin-bottom:4px}
+.wish-for p{margin:0;white-space:pre-line;overflow-wrap:anywhere;color:var(--ink)}
+.wish-for p.empty{color:var(--faint)}
+#wishForm{max-width:380px;margin:22px auto 0;text-align:left}
+#wishForm textarea{width:100%;min-height:96px;font:inherit;font-size:17px;padding:13px 16px;border-radius:16px;border:var(--b);background:var(--snow);color:var(--ink);resize:vertical;-webkit-appearance:none;appearance:none}
+#wishForm .btn{margin-top:12px}
 .scratch canvas.gone{opacity:0;transform:scale(1.15);pointer-events:none}
 
 /* ---------- pull ---------- */
@@ -819,7 +827,8 @@ const server = {
   runDraw: p => rpc("run_draw", { p_pass: p }),
   setVote: (p, s) => rpc("set_vote_state", { p_pass: p, p_state: s }),
   adminDelete: (p, code) => rpc("admin_delete", { p_pass: p, p_code: code }),
-  revealed: code => rpc("mark_revealed", { p_code: code })
+  revealed: code => rpc("mark_revealed", { p_code: code }),
+  wishes: (code, text) => rpc("set_wishes", { p_code: code, p_text: text })
 };
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
@@ -862,7 +871,8 @@ function dPartner(id, p) {
   if (pg) pg.partner_id = id;
 }
 const dMe = g => ({ id: g.id, name: g.name, status: g.status, foyer: g.foyer, partner_id: g.partner_id, kids: g.kids, diet: g.diet, code: g.code,
-  receiver: D.assign[g.id] ? (byId(D.assign[g.id]) || {}).name || null : null, voted_for: D.votes[g.id] || null });
+  receiver: D.assign[g.id] ? (byId(D.assign[g.id]) || {}).name || null : null, voted_for: D.votes[g.id] || null,
+  wishes: g.wishes || null, receiver_wishes: D.assign[g.id] ? (byId(D.assign[g.id]) || {}).wishes || null : null });
 const dAdmin = p => { if (p !== D.pass) fail("mauvais_mdp"); };
 const demo = {
   async state() {
@@ -936,6 +946,10 @@ const demo = {
     dload(); const g = byCode(code); if (!g) fail("code_inconnu");
     if (D.assign[g.id] && !g.revealed_at) { g.revealed_at = new Date().toISOString(); dsave(); }
     return { ok: true };
+  },
+  async wishes(code, text) {
+    dload(); const g = byCode(code); if (!g) fail("code_inconnu");
+    g.wishes = String(text || "").trim().slice(0, 300) || null; dsave(); return dMe(g);
   }
 };
 const api = DEMO ? demo : server;
@@ -1774,12 +1788,12 @@ function renderSanta() {
     watchReveal();
   }
   const s = JSON.stringify([state.draw_done, meData && meData.code, meData && meData.receiver, meData && meData.status]);
-  if (sig.santa === s) return;
+  if (sig.santa === s) { fillReceiverWishes(); return; }
   sig.santa = s;
   const box = $("#santaBox");
   if (!state.draw_done) {
     box.innerHTML = `<div class="panel"><div class="envelopes">${envSVG}${envSVG}${envSVG}</div>
-      <p>Les enveloppes sont scellées. Après le tirage, reviens ici avec ton code de lutin pour gratter ton paquet.</p></div>`;
+      <p>Les enveloppes sont scellées. Après le tirage, reviens ici avec ton code de lutin pour gratter ton paquet.</p>${wishFormHTML()}</div>`;
     return;
   }
   if (!meData) {
@@ -1796,9 +1810,26 @@ function renderSanta() {
     <div class="scratch${seen ? " done" : ""}" id="scratch">
       <div class="reveal"><small>Cette année, tu gâtes</small><b>${esc(meData.receiver)}</b><small>${C.budget} € max · motus et bouche cousue</small></div>
       ${seen ? "" : "<canvas></canvas>"}
-    </div></div>`;
+    </div>
+    <div class="wish-for" id="rcvWishes"${seen ? "" : " hidden"}><small>Sa liste au Père Noël</small><p></p></div>
+    ${wishFormHTML()}</div>`;
+  fillReceiverWishes();
   if (!seen) setupScratch($("#scratch"), meData.code);
   else markRevealed(meData.code);
+}
+// Idées cadeau : chacun écrit les siennes, seul son Père Noël secret les lit
+function wishFormHTML() {
+  if (!meData || meData.status !== "oui") return "";
+  return `<form id="wishForm"><label class="field"><span>Ta liste au Père Noël</span>
+    <textarea name="w" maxlength="300" placeholder="Quelques idées pour ${C.budget} € max : un livre, du chocolat, un truc rigolo…">${esc(meData.wishes || "")}</textarea>
+    <small>Seule la personne qui t'a tiré la verra, en grattant sa carte.</small></label>
+    <button class="btn small">${ic("gift")}Enregistrer</button><p class="err" role="alert"></p></form>`;
+}
+function fillReceiverWishes() {
+  const p = $("#rcvWishes p"); if (!p || !meData) return;
+  const w = meData.receiver_wishes;
+  p.textContent = w || "Pas encore d'idées… à toi d'improviser !";
+  p.classList.toggle("empty", !w);
 }
 // Prévient les orgas que la carte est grattée (le nom tiré ne quitte jamais la base)
 const revealSent = {};
@@ -1836,7 +1867,7 @@ function setupScratch(el, theCode) {
     const d = cx.getImageData(0, 0, cv.width, cv.height).data; let clear = 0, tot = 0;
     for (let i = 3; i < d.length; i += 4 * 37) { tot++; if (d[i] === 0) clear++; }
     if (!done && clear / tot > .5) {
-      done = true; cv.classList.add("gone"); el.classList.add("done"); store.set("noel-revealed-" + theCode, "1"); markRevealed(theCode);
+      done = true; cv.classList.add("gone"); el.classList.add("done"); const rw = $("#rcvWishes"); if (rw) rw.hidden = false; store.set("noel-revealed-" + theCode, "1"); markRevealed(theCode);
       const r = el.getBoundingClientRect(); confetti(r.left + r.width / 2, r.top + r.height / 2, 180); jingle();
     }
   }
@@ -1971,6 +2002,15 @@ document.addEventListener("submit", async e => {
     const p = f.p.value;
     try { await api.adminList(p); adminPass = p; try { sessionStorage.setItem("noel-admin", p); } catch {} renderAdmin(); }
     catch (er) { f.querySelector(".err").textContent = errText(er); }
+    return;
+  }
+  if (f.id === "wishForm") {
+    e.preventDefault();
+    const err = f.querySelector(".err"), btn = f.querySelector(".btn");
+    btn.disabled = true; err.textContent = "";
+    try { meData = await api.wishes(meData.code, f.w.value); f.w.value = meData.wishes || ""; toast("Ta liste est envoyée au pôle Nord", "gift"); }
+    catch (er) { err.textContent = errText(er); }
+    btn.disabled = false;
     return;
   }
   if (f.id !== "rsvpForm") return;
